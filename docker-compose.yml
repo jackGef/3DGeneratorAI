@@ -1,0 +1,78 @@
+version: "3.9"
+
+name: text-to-3d-shape
+
+volumes:
+  mongo_data:
+  assets_data:
+  hf_cache:
+
+networks:
+  appnet:
+
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks: [appnet]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [appnet]
+
+  model-server:
+    build: ./model-server
+    environment:
+      - ASSETS_DIR=/data/assets
+      - HF_HOME=/cache/huggingface
+      - TRANSFORMERS_CACHE=/cache/huggingface/transformers
+      - HF_HUB_ENABLE_HF_TRANSFER=0
+      - HF_HUB_TIMEOUT=120
+      - HF_HUB_DISABLE_TELEMETRY=1      # optional
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    volumes:
+      - ./model-weights/renderer:/app/renderer
+      - ./model-weights/shap_e_renderer:/app/shap_e_renderer:ro   # ← add this
+      - hf_cache:/cache/huggingface                                # ← keep one cache mount
+      - assets_data:/data/assets
+    ports:
+      - "5000:5000"
+    networks: [appnet]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5000/health').read() else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+
+  backend:
+    build: ./backend
+    environment:
+      - PORT=8080
+      - MONGO_URI=mongodb://mongo:27017/3D-generator
+      - MODEL_SERVER_URL=http://model-server:5000
+      - ASSETS_DIR=/data/assets
+      - PUBLIC_BASE_URL=http://localhost:8080
+    depends_on:
+      - mongo
+      - model-server
+    volumes:
+      - assets_data:/data/assets:ro
+    ports:
+      - "8080:8080"
+    networks: [appnet]
+
+  front:
+    build: ./front
+    environment:
+      - VITE_API_BASE=http://localhost:8080
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    networks: [appnet]
