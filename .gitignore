@@ -65,6 +65,12 @@ model-weights/
 renderer/
 model-server/data/
 
+# Hugging Face local cache / repo helpers
+# The `huggingface_hub` or some HF tools may write a `.hf/` directory
+# in the project containing downloaded artifacts or temporary files.
+# Ignore it to avoid committing large model files or tokens.
+.hf/
+
 # Model-server virtual env
 model-server/venv/
 
