@@ -1,13 +1,17 @@
 import { Router } from "express";
 import * as UserCtrl from "../controllers/user.controller.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const r = Router();
 
+// Public routes (for now - in production you might want to restrict these too)
 r.post("/", UserCtrl.createUser);
-r.get("/", UserCtrl.listUsers);
-r.get("/:email", UserCtrl.getUserByEmail);
-r.get("/id/:id", UserCtrl.getUserById);
-r.patch("/:id", UserCtrl.updateUserById);
-r.delete("/:id", UserCtrl.deleteUserById);
+
+// Protected routes
+r.get("/", requireAuth, UserCtrl.listUsers);
+r.get("/:email", requireAuth, UserCtrl.getUserByEmail);
+r.get("/id/:id", requireAuth, UserCtrl.getUserById);
+r.patch("/:id", requireAuth, UserCtrl.updateUserById);
+r.delete("/:id", requireAuth, UserCtrl.deleteUserById);
 
 export default r;

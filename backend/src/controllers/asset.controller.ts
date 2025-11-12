@@ -1,7 +1,14 @@
 import { Request, Response } from "express";
 import Asset from "../models/asset.model.js";
+import { Types } from "mongoose";
 
-function uid(req: Request) { return (req.headers["x-user-id"] as string) }
+function uid(req: Request): Types.ObjectId {
+  const userId = req.user?.userId;
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+  return new Types.ObjectId(userId);
+}
 
 export async function listMyAssets(req: Request, res: Response) {
   try {

@@ -8,6 +8,26 @@ from diffusers import ShapEPipeline
 from diffusers.utils import export_to_ply, export_to_obj
 import trimesh
 
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+from huggingface_hub import InferenceClient
+
+from dotenv import load_dotenv
+load_dotenv()
+
+
+# Initialize tokenizer and model
+model_name = 'google/flan-ul2'
+toeknizer = AutoTokenizer.from_pretrained(model_name)
+text_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+
+# Initialize Hugging Face variables
+client = InferenceClient(token=os.environ.get("HUGGINGFACE_HUB_TOKEN"))
+model_id = "gpt2"  # Changed to a stable, widely available model
+
+prompt = "Translate the following English text to Hebrew: 'Hello, how are you?'"
+
+
 ASSETS_DIR = os.environ.get("ASSETS_DIR", "./data/assets")
 GUIDANCE_DEFAULT = float(os.environ.get("GUIDANCE_DEFAULT", 15.0))
 STEPS_DEFAULT = int(os.environ.get("STEPS_DEFAULT", 64))
@@ -19,6 +39,8 @@ app = Flask(__name__)
 _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _dtype = torch.float16 if _device.type == 'cuda' else torch.float32
 print(f"[model-server] Using device={_device}, dtype={_dtype}")
+
+text_model = text_model.to(_device)
 
 if _device.type == 'cuda':
     pipe = ShapEPipeline.from_pretrained("openai/shap-e", torch_dtype=_dtype, variant="fp16").to(_device)
@@ -38,8 +60,20 @@ def get_asset(obj_id, filename):
 def health():
     return jsonify({"ok": True, "device": str(_device)})
 
-@app.post('/generate')
-def generate():
+@app.post('/generateText')
+def generateText():
+   inputs = toeknizer(prompt, return_tensors="pt").to(_device)
+   outputs_ids = text_model.generate(
+       **inputs,
+       max_length=64,
+       num_beams=4,
+       early_stopping=True,
+       no_repeat_ngram_size=2
+   )
+   print(toeknizer.decode(outputs_ids[0], skip_special_tokens=True))
+
+@app.post('/generate3D')
+def generate3D():
     data = request.get_json(force=True)
     prompt = data.get('prompt')
     if not prompt or not isinstance(prompt, str):
@@ -94,4 +128,7 @@ def generate():
     return jsonify({ "id": obj_id })
 
 if __name__ == '__main__':
+    print("[model-server] Starting Flask server...")
+    print("[model-server] Text generation endpoint: POST /generateText")
+    print("[model-server] 3D generation endpoint: POST /generate3D")
     app.run(host='0.0.0.0', port=5000)

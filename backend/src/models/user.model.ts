@@ -8,6 +8,7 @@ export interface IUser {
     password: string;
     userName: string;
     roles: string[];
+    isActive: boolean;
     profile: { avatarUrl?: string; bio?: string };
     settings: {
         theme?: "light" | "dark";
@@ -25,6 +26,7 @@ const UserSchema = new Schema<IUser>(
         password: { type: String, required: true },
         userName: { type: String, required: true },
         roles: { type: [String], default: ['user'], index: true },
+        isActive: { type: Boolean, default: true, index: true },
         profile: {
             avatarUrl: String,
             bio: String

@@ -21,6 +21,10 @@ yarn-error.log*
 pnpm-debug.log*
 *.log
 
+# Winston log files
+logs/
+backend/logs/
+
 # Environment / secret files
 .env
 .env.*
