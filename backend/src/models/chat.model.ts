@@ -1,32 +1,62 @@
-import mongoose, { Types } from "mongoose";
+import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 
+export interface IMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
 export interface IChat {
-  _id: Types.ObjectId;
-  userId: Types.ObjectId;
+  _id: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   title: string;
-  lastMessageAt: Date | null;
-  messageCount: number;
-  pinned: boolean;
-  archived: boolean;
-  preview?: string;
+  messages: IMessage[];
+  isPinned: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const ChatSchema = new Schema<IChat>(
-  {
-    userId: { type: Schema.Types.ObjectId, ref: "User", index: true, required: true },
-    title: { type: String, required: true },
-    lastMessageAt: { type: Date, default: null, index: true },
-    messageCount: { type: Number, default: 0 },
-    pinned: { type: Boolean, default: false },
-    archived: { type: Boolean, default: false },
-    preview: String,
-  },
-  { timestamps: true }
-);
+const messageSchema = new Schema<IMessage>({
+  id: { type: String, required: true },
+  role: { type: String, enum: ['user', 'assistant'], required: true },
+  content: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+}, { _id: false });
 
-ChatSchema.index({ userId: 1, lastMessageAt: -1 });
+const chatSchema = new Schema<IChat>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  title: { type: String, required: true, maxlength: 30 },
+  messages: [messageSchema],
+  isPinned: { type: Boolean, default: false }
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-export default models.Chat || model<IChat>("Chat", ChatSchema);
+// Index for efficient user chat queries
+chatSchema.index({ userId: 1, createdAt: -1 });
+chatSchema.index({ userId: 1, isPinned: -1, updatedAt: -1 });
+
+// Virtual for getting the last message
+chatSchema.virtual('lastMessage').get(function() {
+  if (this.messages && this.messages.length > 0) {
+    return this.messages[this.messages.length - 1];
+  }
+  return null;
+});
+
+// Virtual for getting preview text
+chatSchema.virtual('preview').get(function() {
+  if (this.messages && this.messages.length > 0) {
+    const lastMessage = this.messages[this.messages.length - 1];
+    return lastMessage.content.substring(0, 50) + (lastMessage.content.length > 50 ? '...' : '');
+  }
+  return '';
+});
+
+const Chat = models.Chat || model<IChat>("Chat", chatSchema);
+
+export default Chat;

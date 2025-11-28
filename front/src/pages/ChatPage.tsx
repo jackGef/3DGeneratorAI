@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useNavigate } from 'react-router-dom'
-import { v4 as uuidv4 } from 'uuid'
+import { useNavigate, Link } from 'react-router-dom'
+import { chatsAPI } from '../services/api'
 
 import "../styles2/chatPage.css"
 
@@ -10,16 +10,20 @@ import { FaPaperPlane, FaPlus, FaUser, FaEdit, FaBars, FaTrash, FaCopy, FaThumbt
 
 interface Message {
   id: string;
-  text: string;
-  sender: 'user' | 'response';
+  role: 'user' | 'assistant';
+  content: string;
   timestamp: Date;
 }
 
 interface Chat {
   id: string;
-  messages: Message[];
   title: string;
+  messages: Message[];
+  isPinned: boolean;
   createdAt: Date;
+  updatedAt: Date;
+  preview?: string;
+  messageCount?: number;
 }
 
 const chatPage = () => {
@@ -42,10 +46,38 @@ const chatPage = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    loadChats();
+  }, []);
+
+  const loadChats = async () => {
+    try {
+      const userChats = await chatsAPI.list();
+      setChats(userChats);
+      
+      // Set pinned chats
+      const pinned = new Set(userChats.filter((chat: Chat) => chat.isPinned).map((chat: Chat) => chat.id));
+      setPinnedChats(pinned);
+    } catch (error) {
+      console.error('Failed to load chats:', error);
+    }
+  };
+
+  const loadChat = async (chatId: string) => {
+    try {
+      const chat = await chatsAPI.get(chatId);
+      setCurrentChatId(chatId);
+      setMessages(chat.messages || []);
+    } catch (error) {
+      console.error('Failed to load chat:', error);
+    }
+  };
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        setShowProfileMenu(false);
+      if (profileRef.current && event.target && profileRef.current.contains(event.target as Node)) {
+        return;
       }
+      setShowProfileMenu(false);
     };
 
     if (showProfileMenu) {
@@ -89,58 +121,35 @@ const chatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (inputText.trim() === '') return;
 
-    // Create a chat ID if this is the first message
-    let chatId = currentChatId;
-    if (!chatId) {
-      chatId = uuidv4();
-      setCurrentChatId(chatId);
-    }
-
-    const newMessage: Message = {
-      id: uuidv4(),
-      text: inputText,
-      sender: 'user',
-      timestamp: new Date(),
-    };
-
-    const updatedMessages = [...messages, newMessage];
-    setMessages(updatedMessages);
+    setIsLoading(true);
+    const messageContent = inputText;
     setInputText('');
 
-    // Update the current chat in the chats list
-    const existingChat = chats.find(c => c.id === chatId);
-    if (existingChat) {
-      setChats(chats.map(chat => 
-        chat.id === chatId 
-          ? { ...chat, messages: updatedMessages }
-          : chat
-      ));
-    }
-
-    // Simulate bot response with loading
-    setIsLoading(true);
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: uuidv4(),
-        text: 'This is a simulated response. Connect to your backend for real responses.',
-        sender: 'response',
-        timestamp: new Date(),
-      };
-      const withBot = [...updatedMessages, botMessage];
-      setMessages(withBot);
-      setIsLoading(false);
-      
-      if (existingChat) {
-        setChats(chats.map(chat => 
-          chat.id === chatId 
-            ? { ...chat, messages: withBot }
-            : chat
-        ));
+    try {
+      // Create a new chat if this is the first message
+      let chatId = currentChatId;
+      if (!chatId) {
+        const newChat = await chatsAPI.create(messageContent.substring(0, 30) + '...');
+        chatId = newChat.id;
+        setCurrentChatId(chatId);
+        await loadChats(); // Refresh chat list
       }
-    }, 1000);
+
+      // Send the user message
+      await chatsAPI.addMessage(chatId, 'user', messageContent);
+      
+      // Reload the chat to get updated messages (including bot response)
+      setTimeout(async () => {
+        await loadChat(chatId);
+        setIsLoading(false);
+      }, 1500); // Wait for bot response
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -150,63 +159,53 @@ const chatPage = () => {
     }
   };
 
-  const createNewChat = () => {
-    // Save current chat if it has messages
-    if (messages.length > 0 && currentChatId) {
-      const existingChat = chats.find(c => c.id === currentChatId);
-      if (!existingChat) {
-        const newChat: Chat = {
-          id: currentChatId,
-          messages: messages,
-          title: messages[0]?.text.substring(0, 30) + '...' || 'New Chat',
-          createdAt: new Date(),
-        };
-        setChats([...chats, newChat]);
-      }
-    }
-
-    // Create new chat
-    const newChatId = uuidv4();
-    setCurrentChatId(newChatId);
-    setMessages([]);
-  };
-
-  const loadChat = (chatId: string) => {
-    const chat = chats.find(c => c.id === chatId);
-    if (chat) {
-      setCurrentChatId(chatId);
-      setMessages(chat.messages);
+  const createNewChat = async () => {
+    try {
+      const newChat = await chatsAPI.create('New Chat');
+      setCurrentChatId(newChat.id);
+      setMessages([]);
+      await loadChats(); // Refresh chat list
+    } catch (error) {
+      console.error('Failed to create chat:', error);
     }
   };
 
-  const handleEditMenu = (chatId: string) => {
+  const handleEditMenu = async (chatId: string) => {
     if (editTitle.trim()) {
-      setChats(chats.map(chat => 
-        chat.id === chatId 
-          ? { ...chat, title: editTitle }
-          : chat
-      ));
+      try {
+        await chatsAPI.update(chatId, { title: editTitle });
+        await loadChats(); // Refresh chat list
+      } catch (error) {
+        console.error('Failed to update chat:', error);
+      }
     }
     setEditingChatId(null);
     setEditTitle('');
-  }
+  };
 
-  const deleteChat = (chatId: string) => {
-    setChats(chats.filter(chat => chat.id !== chatId));
-    if (currentChatId === chatId) {
-      setCurrentChatId(null);
-      setMessages([]);
+  const deleteChat = async (chatId: string) => {
+    try {
+      await chatsAPI.delete(chatId);
+      if (currentChatId === chatId) {
+        setCurrentChatId(null);
+        setMessages([]);
+      }
+      await loadChats(); // Refresh chat list
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
     }
   };
 
-  const togglePinChat = (chatId: string) => {
-    const newPinned = new Set(pinnedChats);
-    if (newPinned.has(chatId)) {
-      newPinned.delete(chatId);
-    } else {
-      newPinned.add(chatId);
+  const togglePinChat = async (chatId: string) => {
+    try {
+      const chat = chats.find(c => c.id === chatId);
+      if (chat) {
+        await chatsAPI.update(chatId, { isPinned: !chat.isPinned });
+        await loadChats(); // Refresh chat list
+      }
+    } catch (error) {
+      console.error('Failed to toggle pin:', error);
     }
-    setPinnedChats(newPinned);
   };
 
   const copyMessage = (text: string) => {
@@ -224,16 +223,23 @@ const chatPage = () => {
     
     // Sort: pinned first, then by date
     return filtered.sort((a, b) => {
-      const aPin = pinnedChats.has(a.id) ? 1 : 0;
-      const bPin = pinnedChats.has(b.id) ? 1 : 0;
+      const aPin = a.isPinned ? 1 : 0;
+      const bPin = b.isPinned ? 1 : 0;
       if (aPin !== bPin) return bPin - aPin;
-      return b.createdAt.getTime() - a.createdAt.getTime();
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
   };
 
-  const getRelativeTime = (date: Date) => {
+  const getRelativeTime = (date: Date | string) => {
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return 'Unknown';
+    }
+    
+    const diff = now.getTime() - dateObj.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     
     if (days === 0) return 'Today';
@@ -300,7 +306,7 @@ const chatPage = () => {
                     <p className="chat-title">{chat.title}</p>
                     {pinnedChats.has(chat.id) && <FaThumbtack className="pin-icon" />}
                   </div>
-                  <p className="chat-preview">{chat.messages[chat.messages.length - 1]?.text.substring(0, 40)}...</p>
+                  <p className="chat-preview">{chat.messages[chat.messages.length - 1]?.text?.substring(0, 40) || 'No messages yet'}...</p>
                   <small className="chat-date">{getRelativeTime(chat.createdAt)}</small>
                 </div>
                 <div className="chat-actions">
@@ -365,14 +371,19 @@ const chatPage = () => {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
           >
             <FaUser/> {user?.userName}
-            {showProfileMenu && (
-              <div className='profile-menu'>
-                <button className='logout-button' onClick={handleLogout}>
-                  Logout
-                </button>
-              </div>
-            )}
           </button>
+          {showProfileMenu && (
+            <div className='profile-menu'>
+              {user?.roles?.includes('admin') && (
+                <Link to="/admin" className="admin-link">
+                  Admin Dashboard
+                </Link>
+              )}
+              <button className='logout-button' onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -388,19 +399,19 @@ const chatPage = () => {
               {messages.map((message) => (
                 <div 
                   key={message.id} 
-                  className={`message ${message.sender}`}
+                  className={`message ${message.role}`}
                 >
                   <div className="message-content">
-                    <strong>{message.sender === 'user' ? user?.userName : 'Bot'}:</strong>
-                    <p>{message.text}</p>
+                    <strong>{message.role === 'user' ? user?.userName : 'Assistant'}:</strong>
+                    <p>{message.content}</p>
                   </div>
                   <div className="message-footer">
                     <span className="message-time">
-                      {message.timestamp.toLocaleTimeString()}
+                      {new Date(message.timestamp).toLocaleTimeString()}
                     </span>
                     <button 
                       className="copy-button" 
-                      onClick={() => copyMessage(message.text)}
+                      onClick={() => copyMessage(message.content)}
                       title="Copy message"
                     >
                       <FaCopy />

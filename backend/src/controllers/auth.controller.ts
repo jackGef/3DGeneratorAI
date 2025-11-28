@@ -28,7 +28,14 @@ export async function startRegistration(req: Request, res: Response) {
 
     const { email, userName, password } = parsed.data;
 
-    // avoid duplicates (both in users and in pending)
+    // Check if user already exists
+    const existingUser = await User.findOne({ email }).lean();
+    if (existingUser)
+      return res
+        .status(409)
+        .json({ error: "User already exists with this email" });
+
+    // avoid duplicates in pending verifications
     const existing = await Verification.findOne({ email }).lean();
     if (existing)
       return res
@@ -63,6 +70,75 @@ export async function startRegistration(req: Request, res: Response) {
   }
 }
 
+const resendVerificationSchema = z.object({
+  email: z.string().email(),
+});
+
+export async function resendVerification(req: Request, res: Response) {
+  try {
+    const parsed = resendVerificationSchema.safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({ error: "Invalid data", details: parsed.error.flatten() });
+
+    const { email } = parsed.data;
+
+    // Find pending verification
+    const pending = await Verification.findOne({ email });
+    if (!pending) {
+      return res.status(404).json({ 
+        error: "No pending verification found", 
+        message: "Please start registration process first" 
+      });
+    }
+
+    // Check if verification is expired
+    if (pending.expiresAt.getTime() < Date.now()) {
+      // Clean up expired record
+      await Verification.deleteOne({ email });
+      return res.status(410).json({ 
+        error: "Verification expired", 
+        message: "Please register again" 
+      });
+    }
+
+    // Generate new code and update expiry
+    const code = generateSecureCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+    
+    await Verification.updateOne(
+      { email },
+      { code, expiresAt }
+    );
+
+    // Send the new code
+    try {
+      await sendEmail(
+        email,
+        "Verify your email - Resent",
+        `Your new verification code is: ${code}`,
+        `<p>Your new verification code is: <b>${code}</b></p><p><small>This code expires in 15 minutes.</small></p>`
+      );
+      console.log(`Verification email resent to ${email}`);
+    } catch (mailErr) {
+      console.warn(`Failed to resend verification email to ${email}:`, mailErr);
+      return res.status(500).json({ 
+        error: "Failed to send email", 
+        message: "Please try again later" 
+      });
+    }
+
+    return res.json({ 
+      ok: true, 
+      message: "New verification code sent to email" 
+    });
+  } catch (err) {
+    console.error("Error in resendVerification:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
 const completeRegistrationSchema = z.object({
   email: z.string().email(),
   code: z.string().regex(/^\d{6}$/),
@@ -87,6 +163,14 @@ export async function completeRegistration(req: Request, res: Response) {
 
     if (pending.code !== code)
       return res.status(400).json({ error: "Incorrect verification code" });
+
+    // Check if user already exists before creating
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      // Clean up verification record
+      await Verification.deleteOne({ email });
+      return res.status(409).json({ error: "User already exists with this email" });
+    }
 
     // Passed → create user
     const user = await User.create({
