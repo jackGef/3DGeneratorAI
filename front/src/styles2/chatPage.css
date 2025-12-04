@@ -366,6 +366,7 @@ nav.nav-closed {
 .profile-section {
     width: 100%;
     position: relative;
+    box-sizing: border-box;
 }
 
 .profile-button {
@@ -381,6 +382,7 @@ nav.nav-closed {
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.2s;
+    box-sizing: border-box;
 }
 
 .profile-button:hover {
@@ -396,6 +398,8 @@ nav.nav-closed {
     border-radius: 8px;
     margin-bottom: 5px;
     padding: 5px;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .admin-link {
@@ -410,6 +414,7 @@ nav.nav-closed {
     font-size: 14px;
     margin-bottom: 5px;
     transition: background-color 0.2s;
+    box-sizing: border-box;
 }
 
 .admin-link:hover {
@@ -426,6 +431,7 @@ nav.nav-closed {
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.2s;
+    box-sizing: border-box;
 }
 
 .logout-button:hover {
