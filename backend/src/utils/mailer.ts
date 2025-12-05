@@ -6,8 +6,7 @@ export const transporter: Transporter<SentMessageInfo> = nodemailer.createTransp
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
-    // helpful debugging and timeouts
-    logger: false, // set true locally if you need detailed logs
+    logger: false,
     debug: false,
     connectionTimeout: 30_000,
     greetingTimeout: 10_000,
@@ -24,7 +23,6 @@ export async function verifyTransporter(): Promise<void> {
 }
 
 export async function sendEmail(to: string, subject: string, text: string, html?: string): Promise<SentMessageInfo> {
-    // Let errors bubble to the caller so callers can decide how to handle them.
     return transporter.sendMail({
         from: process.env.EMAIL_USER,
         to,

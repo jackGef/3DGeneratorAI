@@ -62,8 +62,7 @@ export default function RegisterPage() {
 
     try {
       await resendVerification(email);
-      setError(''); // Clear any previous errors
-      // Show success message temporarily
+      setError('');
       const successDiv = document.createElement('div');
       successDiv.className = 'success-message';
       successDiv.textContent = 'New verification code sent to your email';
