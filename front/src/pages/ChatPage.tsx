@@ -139,6 +139,7 @@ const chatPage = () => {
       }
 
       // Send the user message
+      if (!chatId) throw new Error('Chat ID is null after creation');
       await chatsAPI.addMessage(chatId, 'user', messageContent);
       
       // Reload the chat to get updated messages (including bot response)

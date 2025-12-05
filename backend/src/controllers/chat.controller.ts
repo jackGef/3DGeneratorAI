@@ -48,7 +48,6 @@ export async function getUserChats(req: Request, res: Response) {
       .select('title messages isPinned createdAt updatedAt')
       .lean() as ChatDocument[];
 
-    // Add preview and lastMessage info
     const chatsWithPreview = chats.map(chat => ({
       ...chat,
       id: chat._id.toString(),
