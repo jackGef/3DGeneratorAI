@@ -3,6 +3,15 @@ import { z } from "zod";
 import { v4 as uuidv4 } from 'uuid';
 import Chat from "../models/chat.model.js";
 import type { Types } from 'mongoose';
+import axios from 'axios';
+
+interface ModelData {
+  modelId: string;
+  glbUrl: string;
+  objUrl: string;
+  plyUrl: string;
+  mtlUrl: string;
+}
 
 interface ChatDocument {
   _id: Types.ObjectId;
@@ -12,6 +21,8 @@ interface ChatDocument {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    type?: 'text' | '3d-model';
+    modelData?: ModelData;
   }>;
   userId: Types.ObjectId;
   isPinned: boolean;
@@ -34,6 +45,65 @@ const addMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
   content: z.string().min(1),
 });
+
+// Get model server URL from environment
+const MODEL_SERVER_URL = process.env.MODEL_SERVER_URL || 'http://localhost:5000';
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'http://localhost:8081';
+
+// Function to generate 3D model via model-server
+async function generate3DModel(chatId: string, prompt: string) {
+  try {
+    console.log(`Generating 3D model for prompt: "${prompt}"`);
+    
+    // Call model-server to generate 3D model
+    const response = await axios.post(`${MODEL_SERVER_URL}/generate3D`, {
+      prompt,
+      guidanceScale: 15.0,
+      steps: 64,
+      frameSize: 256
+    }, {
+      timeout: 300000 // 5 minutes timeout for model generation
+    });
+
+    const { id: modelId } = response.data;
+    
+    if (!modelId) {
+      throw new Error('Model server did not return a model ID');
+    }
+
+    console.log(`3D model generated successfully: ${modelId}`);
+
+    // Construct URLs for the generated files
+    const modelData: ModelData = {
+      modelId,
+      glbUrl: `${PUBLIC_BASE_URL}/data/assets/${modelId}/mesh.glb`,
+      objUrl: `${PUBLIC_BASE_URL}/data/assets/${modelId}/mesh.obj`,
+      plyUrl: `${PUBLIC_BASE_URL}/data/assets/${modelId}/mesh.ply`,
+      mtlUrl: `${PUBLIC_BASE_URL}/data/assets/${modelId}/mesh.mtl`
+    };
+
+    // Create assistant message with 3D model
+    const botMessage = {
+      id: uuidv4(),
+      role: 'assistant' as const,
+      content: `I've generated a 3D model based on your prompt: "${prompt}"`,
+      timestamp: new Date(),
+      type: '3d-model' as const,
+      modelData
+    };
+
+    // Add the bot message to the chat
+    await Chat.findByIdAndUpdate(chatId, {
+      $push: { messages: botMessage },
+      $set: { updatedAt: new Date() }
+    });
+
+    console.log(`3D model message added to chat ${chatId}`);
+  } catch (error) {
+    console.error('Error generating 3D model:', error);
+    throw error;
+  }
+}
 
 // Get all chats for the authenticated user
 export async function getUserChats(req: Request, res: Response) {
@@ -235,21 +305,24 @@ export async function addMessage(req: Request, res: Response) {
       return res.status(404).json({ error: "Chat not found" });
     }
 
-    // If it's a user message, generate bot response
+    // If it's a user message, generate 3D model
     if (role === 'user') {
-      setTimeout(async () => {
-        const botMessage = {
+      // Don't wait - generate model asynchronously
+      generate3DModel(chatId, content).catch(err => {
+        console.error('Failed to generate 3D model:', err);
+        // Send error message to chat
+        const errorMessage = {
           id: uuidv4(),
           role: 'assistant' as const,
-          content: `This is a response to: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
-          timestamp: new Date()
+          content: 'Sorry, I encountered an error generating the 3D model. Please try again.',
+          timestamp: new Date(),
+          type: 'text' as const
         };
-
-        await Chat.findByIdAndUpdate(chatId, {
-          $push: { messages: botMessage },
+        Chat.findByIdAndUpdate(chatId, {
+          $push: { messages: errorMessage },
           $set: { updatedAt: new Date() }
-        });
-      }, 1000);
+        }).catch(console.error);
+      });
     }
 
     return res.json({

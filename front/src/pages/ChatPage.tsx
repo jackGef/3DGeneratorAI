@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { chatsAPI } from '../services/api'
+import { ModelViewer2 } from '../components/ModelViewer2'
 
 import "../styles2/chatPage.css"
 
@@ -13,6 +14,14 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  type?: 'text' | '3d-model';
+  modelData?: {
+    modelId: string;
+    glbUrl: string;
+    objUrl: string;
+    plyUrl: string;
+    mtlUrl: string;
+  };
 }
 
 interface Chat {
@@ -142,11 +151,30 @@ const chatPage = () => {
       if (!chatId) throw new Error('Chat ID is null after creation');
       await chatsAPI.addMessage(chatId, 'user', messageContent);
       
-      // Reload the chat to get updated messages (including bot response)
-      setTimeout(async () => {
-        await loadChat(chatId);
+      // Immediately reload to show user message
+      await loadChat(chatId);
+      
+      // Poll for the 3D model response (can take longer)
+      const pollInterval = setInterval(async () => {
+        try {
+          await loadChat(chatId);
+          // Check if we have a new assistant message
+          const chat = await chatsAPI.get(chatId);
+          const lastMessage = chat.messages[chat.messages.length - 1];
+          if (lastMessage && lastMessage.role === 'assistant') {
+            clearInterval(pollInterval);
+            setIsLoading(false);
+          }
+        } catch (error) {
+          console.error('Error polling for updates:', error);
+        }
+      }, 2000); // Poll every 2 seconds
+
+      // Stop polling after 5 minutes (model generation timeout)
+      setTimeout(() => {
+        clearInterval(pollInterval);
         setIsLoading(false);
-      }, 1500); // Wait for bot response
+      }, 300000);
     } catch (error) {
       console.error('Failed to send message:', error);
       setIsLoading(false);
@@ -405,6 +433,21 @@ const chatPage = () => {
                   <div className="message-content">
                     <strong>{message.role === 'user' ? user?.userName : 'Assistant'}:</strong>
                     <p>{message.content}</p>
+                    {message.type === '3d-model' && message.modelData && (
+                      <div className="model-viewer-container">
+                        <ModelViewer2 
+                          src={message.modelData.glbUrl}
+                          autoRotate={true}
+                          background="#1a1a1a"
+                          height="400px"
+                        />
+                        <div className="model-download-links">
+                          <a href={message.modelData.glbUrl} download>Download GLB</a>
+                          <a href={message.modelData.objUrl} download>Download OBJ</a>
+                          <a href={message.modelData.plyUrl} download>Download PLY</a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="message-footer">
                     <span className="message-time">
