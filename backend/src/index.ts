@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
 import { connectDB } from './services/db.js';
 
 import "dotenv/config";
@@ -44,6 +45,10 @@ app.use(morgan('combined', { stream: httpLoggerStream })); // Use Winston for HT
 app.use(requestLogger); // Custom request/response logging
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Serve static assets (3D models)
+const ASSETS_DIR = process.env.ASSETS_DIR || './data/assets';
+app.use('/data/assets', express.static(path.resolve(ASSETS_DIR)));
 
 app.use('/api/auth', emailRouter);
 app.use('/api/chats', chatRouter);

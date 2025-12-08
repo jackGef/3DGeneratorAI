@@ -1,11 +1,21 @@
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 
+export interface IModelData {
+  modelId: string;
+  glbUrl: string;
+  objUrl: string;
+  plyUrl: string;
+  mtlUrl: string;
+}
+
 export interface IMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  type?: 'text' | '3d-model';
+  modelData?: IModelData;
 }
 
 export interface IChat {
@@ -22,7 +32,18 @@ const messageSchema = new Schema<IMessage>({
   id: { type: String, required: true },
   role: { type: String, enum: ['user', 'assistant'], required: true },
   content: { type: String, required: true },
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
+  type: { type: String, enum: ['text', '3d-model'], default: 'text' },
+  modelData: {
+    type: {
+      modelId: String,
+      glbUrl: String,
+      objUrl: String,
+      plyUrl: String,
+      mtlUrl: String
+    },
+    required: false
+  }
 }, { _id: false });
 
 const chatSchema = new Schema<IChat>({
