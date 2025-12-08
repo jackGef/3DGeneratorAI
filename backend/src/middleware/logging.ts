@@ -4,7 +4,6 @@ import logger from '../utils/logger.js';
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
   const startTime = Date.now();
   
-  // Log request
   logger.info(`Incoming ${req.method} ${req.path}`, {
     method: req.method,
     path: req.path,
@@ -12,7 +11,6 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
     userAgent: req.get('user-agent'),
   });
   
-  // Capture response
   const originalSend = res.send;
   res.send = function(data: any) {
     const duration = Date.now() - startTime;

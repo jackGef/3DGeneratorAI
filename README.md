@@ -95,7 +95,6 @@ See [DOCKER.md](./DOCKER.md) for complete Docker documentation.
 ### Docker Deployment
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8081
-- **API Docs**: http://localhost:8081/api-docs
 
 ---
 

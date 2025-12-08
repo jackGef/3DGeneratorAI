@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   register: (email: string, userName: string, password: string) => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
   refreshUser: () => Promise<void>;
   isAdmin: boolean;
 }
@@ -27,7 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on mount
     const token = getAccessToken();
     if (token) {
       loadUser();
@@ -79,6 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authAPI.verifyEmail(email, code);
   }
 
+  async function resendVerification(email: string) {
+    await authAPI.resendVerification(email);
+  }
+
   async function refreshUser() {
     await loadUser();
   }
@@ -87,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, logout, register, verifyEmail, refreshUser, isAdmin }}
+      value={{ user, loading, login, logout, register, verifyEmail, resendVerification, refreshUser, isAdmin }}
     >
       {children}
     </AuthContext.Provider>

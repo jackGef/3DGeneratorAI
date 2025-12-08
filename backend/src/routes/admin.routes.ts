@@ -1,22 +1,27 @@
 import { Router } from 'express';
-import * as AdminCtrl from '../controllers/admin.controller.js';
-import { requireAuth } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/adminAuth.js';
+import {
+  getAllUsers,
+  getUserDetails,
+  updateUserRoles,
+  toggleUserStatus,
+  deleteUser,
+  getSystemStats
+} from '../controllers/admin.controller.js';
+import { adminAuth } from '../middleware/adminAuth.js';
 
-const r = Router();
+const router = Router();
 
-// All admin routes require authentication and admin role
-r.use(requireAuth);
-r.use(requireAdmin);
-
-// User management
-r.get('/users', AdminCtrl.getAllUsers);
-r.patch('/users/:id/roles', AdminCtrl.updateUserRole);
-r.post('/users/:id/deactivate', AdminCtrl.deactivateUser);
-r.post('/users/:id/reactivate', AdminCtrl.reactivateUser);
-r.delete('/users/:id', AdminCtrl.deleteUserPermanently);
+// Apply admin authentication to all routes
+router.use(adminAuth);
 
 // System statistics
-r.get('/stats', AdminCtrl.getSystemStats);
+router.get('/stats', getSystemStats);
 
-export default r;
+// User management
+router.get('/users', getAllUsers);
+router.get('/users/:userId', getUserDetails);
+router.put('/users/:userId/roles', updateUserRoles);
+router.patch('/users/:userId/toggle-status', toggleUserStatus);
+router.delete('/users/:userId', deleteUser);
+
+export default router;

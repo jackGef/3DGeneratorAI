@@ -12,7 +12,7 @@ export default function RegisterPage() {
   const [verificationCode, setVerificationCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register, verifyEmail } = useAuth();
+  const { register, verifyEmail, resendVerification } = useAuth();
   const navigate = useNavigate();
 
   async function handleRegister(e: React.FormEvent) {
@@ -51,6 +51,30 @@ export default function RegisterPage() {
       navigate('/login');
     } catch (err: any) {
       setError(err.message || 'Verification failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setError('');
+    setLoading(true);
+
+    try {
+      await resendVerification(email);
+      setError('');
+      const successDiv = document.createElement('div');
+      successDiv.className = 'success-message';
+      successDiv.textContent = 'New verification code sent to your email';
+      const form = document.querySelector('form');
+      if (form) {
+        form.insertBefore(successDiv, form.firstChild);
+        setTimeout(() => {
+          successDiv.remove();
+        }, 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend verification code');
     } finally {
       setLoading(false);
     }
@@ -158,13 +182,31 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <button 
-              className="btn btn-secondary" 
-              onClick={() => setStep('register')}
-              disabled={loading}
-            >
-              Back to Registration
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setStep('register')}
+                disabled={loading}
+                style={{ flex: 1 }}
+              >
+                Back to Registration
+              </button>
+              
+              <button 
+                className="btn btn-secondary" 
+                onClick={handleResend}
+                disabled={loading}
+                style={{ flex: 1 }}
+              >
+                {loading ? 'Sending...' : 'Resend Code'}
+              </button>
+            </div>
+
+            <div className="auth-links" style={{ marginTop: '20px' }}>
+              <small style={{ color: '#aaa' }}>
+                Didn't receive the code? Check your spam folder or click "Resend Code"
+              </small>
+            </div>
           </>
         )}
 

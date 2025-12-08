@@ -97,6 +97,13 @@ export const authAPI = {
     });
   },
 
+  async resendVerification(email: string) {
+    return apiRequest('/api/auth/register/resend', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
   async login(email: string, password: string) {
     const data = await apiRequest('/api/auth/login', {
       method: 'POST',
@@ -173,6 +180,10 @@ export const chatsAPI = {
     return apiRequest('/api/chats');
   },
 
+  async get(chatId: string) {
+    return apiRequest(`/api/chats/${chatId}`);
+  },
+
   async create(title: string) {
     return apiRequest('/api/chats', {
       method: 'POST',
@@ -180,16 +191,23 @@ export const chatsAPI = {
     });
   },
 
-  async update(chatId: string, title: string) {
+  async update(chatId: string, data: { title?: string; isPinned?: boolean }) {
     return apiRequest(`/api/chats/${chatId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ title }),
+      body: JSON.stringify(data),
     });
   },
 
   async delete(chatId: string) {
     return apiRequest(`/api/chats/${chatId}`, {
       method: 'DELETE',
+    });
+  },
+
+  async addMessage(chatId: string, role: 'user' | 'assistant', content: string) {
+    return apiRequest(`/api/chats/${chatId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ role, content }),
     });
   },
 };
@@ -229,6 +247,22 @@ export const analyticsAPI = {
   async getChatStats() {
     return apiRequest('/api/analytics/chat-stats');
   },
+};
+
+// Admin API
+export const adminAPI = {
+  getStats: () => apiRequest('/api/admin/stats'),
+  getUsers: () => apiRequest('/api/admin/users'),
+  getUserDetails: (userId: string) => apiRequest(`/api/admin/users/${userId}`),
+  updateUserRoles: (userId: string, roles: string[]) => 
+    apiRequest(`/api/admin/users/${userId}/roles`, {
+      method: 'PUT',
+      body: JSON.stringify({ roles })
+    }),
+  toggleUserStatus: (userId: string) =>
+    apiRequest(`/api/admin/users/${userId}/toggle-status`, { method: 'PATCH' }),
+  deleteUser: (userId: string) =>
+    apiRequest(`/api/admin/users/${userId}`, { method: 'DELETE' })
 };
 
 // Generate API (simplified for backward compatibility)

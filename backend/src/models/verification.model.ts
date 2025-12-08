@@ -15,7 +15,7 @@ const verificationSchema = new Schema<IVerification>({
     userName: { type: String, required: true },
     passwordHash: { type: String, required: true },
     code: { type: String, required: true },
-    expiresAt: { type: Date, required: true },
+    expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
     createdAt: { type: Date, default: Date.now },
 })
 
