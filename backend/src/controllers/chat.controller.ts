@@ -59,10 +59,10 @@ async function generate3DModel(chatId: string, prompt: string) {
     const response = await axios.post(`${MODEL_SERVER_URL}/generate3D`, {
       prompt,
       guidanceScale: 15.0,
-      steps: 64,
-      frameSize: 256
+      steps: 32, // Reduced from 64 for faster generation (2-5 min vs 10+ min)
+      frameSize: 128 // Reduced from 256 for faster generation
     }, {
-      timeout: 300000 // 5 minutes timeout for model generation
+      timeout: 900000 // 15 minutes timeout for model generation
     });
 
     const { id: modelId } = response.data;

@@ -5,15 +5,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // forward /data/* to Flask on :5000
+      // Forward /data/* to backend (which serves static assets)
       "^/data/.*": {
-        target: "http://localhost:5000",
+        target: "http://localhost:8081",
         changeOrigin: true,
         secure: false,
       },
-      // (optional) your API:
+      // Forward API calls to backend
       "^/api/.*": {
-        target: "http://localhost:5000",
+        target: "http://localhost:8081",
         changeOrigin: true,
         secure: false,
       },

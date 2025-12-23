@@ -4,7 +4,7 @@ import User from '../models/user.model.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: string;
+    userId: string;
     email: string;
     roles: string[];
   };
@@ -30,7 +30,7 @@ export const adminAuth = async (req: AuthenticatedRequest, res: Response, next: 
     }
 
     req.user = {
-      id: user._id.toString(),
+      userId: user._id.toString(),
       email: user.email,
       roles: user.roles
     };

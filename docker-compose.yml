@@ -1,5 +1,3 @@
-version: "3.9"
-
 name: text-to-3d-shape
 
 volumes:
@@ -18,11 +16,6 @@ services:
       - mongo_data:/data/db
     networks: [appnet]
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    networks: [appnet]
-
   model-server:
     build: ./model-server
     environment:
@@ -37,8 +30,8 @@ services:
       - 8.8.8.8
     volumes:
       - ./model-weights/renderer:/app/renderer
-      - ./model-weights/shap_e_renderer:/app/shap_e_renderer:ro   # ← add this
-      - hf_cache:/cache/huggingface                                # ← keep one cache mount
+      - ./model-weights/shap_e_renderer:/app/shap_e_renderer:ro
+      - hf_cache:/cache/huggingface
       - assets_data:/data/assets
     ports:
       - "5000:5000"
@@ -54,7 +47,7 @@ services:
     build: ./backend
     environment:
       - PORT=8081
-      - MONGODB_URI=mongodb://mongo:27017/3d-generator
+      - MONGODB_URI=mongodb://mongo:27017/3dgenerator
       - MODEL_SERVER_URL=http://model-server:5000
       - ASSETS_DIR=/data/assets
       - PUBLIC_BASE_URL=http://localhost:8081
@@ -65,8 +58,9 @@ services:
       - EMAIL_HOST=smtp.gmail.com
       - EMAIL_PORT=587
       - EMAIL_USER=${EMAIL_USER:-}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
+      - EMAIL_PASS=${EMAIL_PASS:-}
       - EMAIL_FROM=noreply@3dgenerator.com
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
       - NODE_ENV=production
     depends_on:
       mongo:
@@ -80,7 +74,7 @@ services:
     networks: [appnet]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/api-docs"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
       interval: 30s
       timeout: 10s
       retries: 3

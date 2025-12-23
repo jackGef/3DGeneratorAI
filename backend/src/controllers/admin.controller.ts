@@ -56,7 +56,7 @@ export const updateUserRoles = async (req: AuthenticatedRequest, res: Response) 
     res.json({ message: 'User roles updated successfully', user: { ...user.toObject(), password: undefined } });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid roles data', details: error.errors });
+      return res.status(400).json({ error: 'Invalid roles data', details: error.issues });
     }
     res.status(500).json({ error: 'Failed to update user roles' });
   }
@@ -90,7 +90,7 @@ export const deleteUser = async (req: AuthenticatedRequest, res: Response) => {
     const { userId } = req.params;
     
     // Don't allow deleting yourself
-    if (userId === req.user?.id) {
+    if (userId === req.user?.userId) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
     

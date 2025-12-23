@@ -48,6 +48,8 @@ export async function startRegistration(req: Request, res: Response) {
 
     await Verification.create({ email, userName, passwordHash, code, expiresAt });
 
+    console.log(`[DEV] Verification code for ${email}: ${code}`);
+
     // send the code. await and catch errors so an SMTP failure doesn't
     // crash the whole process (we still return success to the client).
     try {
@@ -112,6 +114,8 @@ export async function resendVerification(req: Request, res: Response) {
       { code, expiresAt }
     );
 
+    console.log(`[DEV] Resent verification code for ${email}: ${code}`);
+
     // Send the new code
     try {
       await sendEmail(
@@ -122,16 +126,13 @@ export async function resendVerification(req: Request, res: Response) {
       );
       console.log(`Verification email resent to ${email}`);
     } catch (mailErr) {
+      // Log the failure but don't treat email send failure as fatal
       console.warn(`Failed to resend verification email to ${email}:`, mailErr);
-      return res.status(500).json({ 
-        error: "Failed to send email", 
-        message: "Please try again later" 
-      });
     }
 
     return res.json({ 
       ok: true, 
-      message: "New verification code sent to email" 
+      message: "Verification code sent (check server logs if email not received)" 
     });
   } catch (err) {
     console.error("Error in resendVerification:", err);
@@ -314,7 +315,7 @@ export async function requestPasswordReset(req: Request, res: Response) {
       await PasswordReset.create({ email, token, expiresAt });
 
       // Send reset email
-      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
       
       try {
         await sendEmail(

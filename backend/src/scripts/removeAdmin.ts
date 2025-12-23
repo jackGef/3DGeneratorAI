@@ -24,7 +24,7 @@ const removeAdmin = async (email: string) => {
         }
         
         // Remove admin role
-        user.roles = user.roles.filter(role => role !== 'admin');
+        user.roles = user.roles.filter((role: string) => role !== 'admin');
         await user.save();
         console.log(`✅ Successfully removed admin role from "${email}"`);
         

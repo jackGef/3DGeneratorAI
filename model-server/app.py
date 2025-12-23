@@ -48,10 +48,21 @@ def generate3D():
     prompt = data.get('prompt')
     if not prompt or not isinstance(prompt, str):
         return jsonify({"error": "Missing prompt"}), 400
+    
+    if len(prompt) > 500:
+        return jsonify({"error": "Prompt too long (max 500 characters)"}), 400
 
     guidance_scale = float(data.get('guidanceScale', GUIDANCE_DEFAULT))
     steps = int(data.get('steps', STEPS_DEFAULT))
     frame_size = int(data.get('frameSize', FRAME_DEFAULT))
+    
+    # Validate parameters to prevent abuse
+    if not (1.0 <= guidance_scale <= 50.0):
+        return jsonify({"error": "guidanceScale must be between 1.0 and 50.0"}), 400
+    if not (16 <= steps <= 128):
+        return jsonify({"error": "steps must be between 16 and 128"}), 400
+    if frame_size not in [64, 128, 256, 512]:
+        return jsonify({"error": "frameSize must be 64, 128, 256, or 512"}), 400
 
     # Output directory
     obj_id = str(uuid.uuid4())
@@ -92,8 +103,13 @@ def generate3D():
         # rot = trimesh.transformations.rotation_matrix(-np.pi/2, [1,0,0])
         # mesh.apply_transform(rot)
         mesh.export(glb_path, file_type="glb")
+        print(f"[model-server] Successfully exported GLB for {obj_id}")
     except Exception as e:
-        print('[WARN] GLB export failed:', e)
+        print(f'[ERROR] GLB export failed for {obj_id}:', e)
+        # Clean up partial files
+        import shutil
+        shutil.rmtree(out_dir, ignore_errors=True)
+        return jsonify({"error": "Failed to generate 3D model", "details": str(e)}), 500
 
     return jsonify({ "id": obj_id })
 

@@ -146,34 +146,6 @@ export const authAPI = {
   },
 };
 
-// Jobs API
-export const jobsAPI = {
-  async list() {
-    return apiRequest('/api/jobs');
-  },
-
-  async create(prompt: string, params: any = {}) {
-    return apiRequest('/api/jobs', {
-      method: 'POST',
-      body: JSON.stringify({ prompt, params }),
-    });
-  },
-
-  async cancel(jobId: string) {
-    return apiRequest(`/api/jobs/${jobId}/cancel`, {
-      method: 'POST',
-    });
-  },
-};
-
-// Assets API
-export const assetsAPI = {
-  async list(jobId?: string) {
-    const query = jobId ? `?jobId=${jobId}` : '';
-    return apiRequest(`/api/assets${query}`);
-  },
-};
-
 // Chats API
 export const chatsAPI = {
   async list() {
@@ -212,43 +184,6 @@ export const chatsAPI = {
   },
 };
 
-// Messages API
-export const messagesAPI = {
-  async list(chatId: string, page = 1, limit = 50) {
-    return apiRequest(`/api/messages?chatId=${chatId}&page=${page}&limit=${limit}`);
-  },
-
-  async send(chatId: string, role: 'user' | 'assistant', content: string, type: 'text' | 'image' | 'model' = 'text', attachments?: any[]) {
-    return apiRequest('/api/messages', {
-      method: 'POST',
-      body: JSON.stringify({ chatId, role, content, type, attachments }),
-    });
-  },
-};
-
-// Analytics API
-export const analyticsAPI = {
-  async getStats() {
-    return apiRequest('/api/analytics/stats');
-  },
-
-  async getDashboard(days = 30) {
-    return apiRequest(`/api/analytics/dashboard?days=${days}`);
-  },
-
-  async getGenerationMetrics(days = 30) {
-    return apiRequest(`/api/analytics/generation-metrics?days=${days}`);
-  },
-
-  async getPopularPrompts(limit = 10) {
-    return apiRequest(`/api/analytics/popular-prompts?limit=${limit}`);
-  },
-
-  async getChatStats() {
-    return apiRequest('/api/analytics/chat-stats');
-  },
-};
-
 // Admin API
 export const adminAPI = {
   getStats: () => apiRequest('/api/admin/stats'),
@@ -265,11 +200,11 @@ export const adminAPI = {
     apiRequest(`/api/admin/users/${userId}`, { method: 'DELETE' })
 };
 
-// Generate API (simplified for backward compatibility)
-export async function generate({ prompt, guidanceScale = 15.0, steps = 64, frameSize = 256 }: 
-  { prompt: string; guidanceScale?: number; steps?: number; frameSize?: number }) {
-  return apiRequest('/api/generate', {
-    method: 'POST',
-    body: JSON.stringify({ prompt, guidanceScale, steps, frameSize }),
-  });
+// Standalone exports for password reset
+export async function requestPasswordReset(email: string) {
+  return authAPI.requestPasswordReset(email);
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  return authAPI.resetPassword(token, newPassword);
 }

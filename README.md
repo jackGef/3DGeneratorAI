@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# 3DGeneratorAI
-A learning project for creating 3D object with AI
-=======
 # 3D Generator AI - Full Stack Application
 
 > Generate 3D models from text prompts using AI, with complete user management, job tracking, and admin controls.
@@ -106,4 +102,3 @@ See [DOCKER.md](./DOCKER.md) for complete Docker documentation.
 **Features**: Auth, generation, jobs, chats, analytics, admin panel
 
 **Project ready for testing and deployment! 🚀**
->>>>>>> feature/finish-backend
