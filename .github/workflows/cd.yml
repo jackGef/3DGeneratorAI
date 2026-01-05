@@ -1,0 +1,74 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allows manual deployment
+
+jobs:
+  deploy:
+    name: Build & Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/3dgeneratorai-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/3dgeneratorai-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front
+          file: ./front/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/3dgeneratorai-frontend:latest
+            ${{ secrets.DOCKER_USERNAME }}/3dgeneratorai-frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and Push Model Server Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./model-server
+          file: ./model-server/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/3dgeneratorai-model-server:latest
+            ${{ secrets.DOCKER_USERNAME }}/3dgeneratorai-model-server:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Deploy to server via SSH (uncomment and configure when ready)
+      # - name: Deploy to Server
+      #   uses: appleboy/ssh-action@v1.0.0
+      #   with:
+      #     host: ${{ secrets.SERVER_HOST }}
+      #     username: ${{ secrets.SERVER_USER }}
+      #     key: ${{ secrets.SERVER_SSH_KEY }}
+      #     script: |
+      #       cd /path/to/your/app
+      #       docker-compose pull
+      #       docker-compose up -d --force-recreate
+      #       docker image prune -f
