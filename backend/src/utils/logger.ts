@@ -13,12 +13,10 @@ const logFormat = winston.format.combine(
   winston.format.printf(({ level, message, timestamp, stack, ...meta }) => {
     let log = `${timestamp} [${level.toUpperCase()}]: ${message}`;
     
-    // Add metadata if present
     if (Object.keys(meta).length > 0) {
       log += ` ${JSON.stringify(meta)}`;
     }
     
-    // Add stack trace for errors
     if (stack) {
       log += `\n${stack}`;
     }
@@ -36,12 +34,10 @@ const consoleFormat = winston.format.combine(
   })
 );
 
-// Create logger instance
 const logger = winston.createLogger({
   level: LOG_LEVEL,
   format: logFormat,
   transports: [
-    // Console transport (always enabled)
     new winston.transports.Console({
       format: consoleFormat,
     }),

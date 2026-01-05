@@ -19,13 +19,13 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
@@ -48,7 +48,7 @@ export default function RegisterPage() {
 
     try {
       await verifyEmail(email, verificationCode);
-      navigate('/login');
+      navigate('/');
     } catch (err: any) {
       setError(err.message || 'Verification failed');
     } finally {

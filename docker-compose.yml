@@ -23,8 +23,8 @@ services:
       - HF_HOME=/cache/huggingface
       - TRANSFORMERS_CACHE=/cache/huggingface/transformers
       - HF_HUB_ENABLE_HF_TRANSFER=0
-      - HF_HUB_TIMEOUT=120
-      - HF_HUB_DISABLE_TELEMETRY=1      # optional
+      - HF_HUB_TIMEOUT=180
+      - HF_HUB_DISABLE_TELEMETRY=1
     dns:
       - 1.1.1.1
       - 8.8.8.8
@@ -51,15 +51,13 @@ services:
       - MODEL_SERVER_URL=http://model-server:5000
       - ASSETS_DIR=/data/assets
       - PUBLIC_BASE_URL=http://localhost:8081
-      - JWT_SECRET=docker-jwt-secret-change-in-production
-      - JWT_REFRESH_SECRET=docker-refresh-secret-change-in-production
       - JWT_EXPIRES_IN=15m
-      - JWT_REFRESH_EXPIRES_IN=7d
+      - JWT_REFRESH_EXPIRES_IN=30d
       - EMAIL_HOST=smtp.gmail.com
       - EMAIL_PORT=587
       - EMAIL_USER=${EMAIL_USER:-}
       - EMAIL_PASS=${EMAIL_PASS:-}
-      - EMAIL_FROM=noreply@3dgenerator.com
+      - EMAIL_FROM=${EMAIL_USER:-}
       - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
       - NODE_ENV=production
     depends_on:

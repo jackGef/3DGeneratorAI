@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'your-super-secret-refresh-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'; // Short-lived access token
+const JWT_SECRET = process.env.JWT_SECRET || undefined ; //!: Works without only in development //?: NOT DEFINED
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || undefined ; //!: Works without only in development //?: NOT DEFINED
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 
 export interface JWTPayload {
@@ -13,6 +13,10 @@ export interface JWTPayload {
 }
 
 export function signToken(payload: JWTPayload): string {
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as any);
 }
 
@@ -24,7 +28,6 @@ export function getRefreshTokenExpiry(): Date {
   const expiresIn = REFRESH_TOKEN_EXPIRES_IN;
   const now = new Date();
   
-  // Parse duration string (e.g., "7d", "30d", "1h")
   const match = expiresIn.match(/^(\d+)([dhms])$/);
   if (!match) {
     // Default to 7 days if parsing fails
@@ -49,9 +52,13 @@ export function getRefreshTokenExpiry(): Date {
 }
 
 export function verifyToken(token: string): JWTPayload {
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+  
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    return decoded;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded as JWTPayload;
   } catch (error) {
     throw new Error('Invalid or expired token');
   }

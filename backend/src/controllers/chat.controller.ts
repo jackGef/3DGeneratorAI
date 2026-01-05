@@ -47,8 +47,8 @@ const addMessageSchema = z.object({
 });
 
 // Get model server URL from environment
-const MODEL_SERVER_URL = process.env.MODEL_SERVER_URL || 'http://localhost:5000';
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'http://localhost:8081';
+const MODEL_SERVER_URL = process.env.MODEL_SERVER_URL;
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL;
 
 // Function to generate 3D model via model-server
 async function generate3DModel(chatId: string, prompt: string) {
@@ -82,7 +82,7 @@ async function generate3DModel(chatId: string, prompt: string) {
       mtlUrl: `${PUBLIC_BASE_URL}/data/assets/${modelId}/mesh.mtl`
     };
 
-    // Create assistant message with 3D model
+    // Create model message with 3D model
     const botMessage = {
       id: uuidv4(),
       role: 'assistant' as const,
@@ -92,7 +92,7 @@ async function generate3DModel(chatId: string, prompt: string) {
       modelData
     };
 
-    // Add the bot message to the chat
+    // Add the model message to the chat
     await Chat.findByIdAndUpdate(chatId, {
       $push: { messages: botMessage },
       $set: { updatedAt: new Date() }
@@ -305,12 +305,10 @@ export async function addMessage(req: Request, res: Response) {
       return res.status(404).json({ error: "Chat not found" });
     }
 
-    // If it's a user message, generate 3D model
     if (role === 'user') {
-      // Don't wait - generate model asynchronously
       generate3DModel(chatId, content).catch(err => {
         console.error('Failed to generate 3D model:', err);
-        // Send error message to chat
+
         const errorMessage = {
           id: uuidv4(),
           role: 'assistant' as const,
