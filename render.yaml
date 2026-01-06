@@ -51,10 +51,6 @@ services:
           property: host
       - key: NODE_ENV
         value: production
-    disk:
-      name: assets-storage
-      mountPath: /data/assets
-      sizeGB: 1
 
   # Model Server (AI/ML Service)
   - type: web
@@ -78,10 +74,6 @@ services:
         value: 180
       - key: HF_HUB_DISABLE_TELEMETRY
         value: 1
-    disk:
-      name: model-cache
-      mountPath: /cache
-      sizeGB: 2
 
   # Frontend Static Site
   - type: web
