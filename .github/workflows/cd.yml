@@ -5,8 +5,14 @@ on:
     branches: [main]
   workflow_dispatch: # Allows manual deployment
 
+concurrency:
+  group: production
+  cancel-in-progress: true
+
 jobs:
   deploy:
+    environment: production
+
     name: Build & Deploy to Production
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -60,7 +66,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Deploy to server via SSH (uncomment and configure when ready)
+      # Deploy to Render.com
+      - name: Trigger Render Deployment
+        run: |
+          echo "Triggering Render deployment via webhook..."
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}"
+          fi
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}"
+          fi
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_MODEL_SERVER }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_MODEL_SERVER }}"
+          fi
+          echo "Deployment triggered successfully!"
+
+      # Alternative: Deploy to server via SSH (if using VPS instead)
       # - name: Deploy to Server
       #   uses: appleboy/ssh-action@v1.0.0
       #   with:

@@ -57,11 +57,9 @@ const chatSchema = new Schema<IChat>({
   toObject: { virtuals: true }
 });
 
-// Index for efficient user chat queries
 chatSchema.index({ userId: 1, createdAt: -1 });
 chatSchema.index({ userId: 1, isPinned: -1, updatedAt: -1 });
 
-// Virtual for getting the last message
 chatSchema.virtual('lastMessage').get(function() {
   if (this.messages && this.messages.length > 0) {
     return this.messages[this.messages.length - 1];
@@ -69,7 +67,6 @@ chatSchema.virtual('lastMessage').get(function() {
   return null;
 });
 
-// Virtual for getting preview text
 chatSchema.virtual('preview').get(function() {
   if (this.messages && this.messages.length > 0) {
     const lastMessage = this.messages[this.messages.length - 1];

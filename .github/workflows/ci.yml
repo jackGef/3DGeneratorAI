@@ -1,8 +1,8 @@
-jname: CI/CD Pipeline
+name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feature/*]
   pull_request:
     branches: [main, develop]
 
@@ -138,4 +138,4 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Test Docker Compose
-        run: docker-compose config
+        run: docker compose config

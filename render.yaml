@@ -1,0 +1,99 @@
+services:
+  # MongoDB Database (using external MongoDB Atlas free tier)
+  # Note: Render doesn't offer free MongoDB, use MongoDB Atlas instead
+  # Connection string will be set via environment variable
+
+  # Backend API Service
+  - type: web
+    name: 3dgenerator-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8081
+      - key: MONGODB_URI
+        sync: false  # Set this in Render dashboard (MongoDB Atlas connection string)
+      - key: MODEL_SERVER_URL
+        value: https://3dgenerator-model-server.onrender.com
+      - key: ASSETS_DIR
+        value: /data/assets
+      - key: PUBLIC_BASE_URL
+        fromService:
+          type: web
+          name: 3dgenerator-backend
+          property: host
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        sync: false  # Set in Render dashboard
+      - key: EMAIL_PASS
+        sync: false  # Set in Render dashboard
+      - key: EMAIL_FROM
+        sync: false  # Set in Render dashboard
+      - key: ALLOWED_ORIGINS
+        fromService:
+          type: web
+          name: 3dgenerator-frontend
+          property: host
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: assets-storage
+      mountPath: /data/assets
+      sizeGB: 1
+
+  # Model Server (AI/ML Service)
+  - type: web
+    name: 3dgenerator-model-server
+    runtime: docker
+    dockerfilePath: ./model-server/Dockerfile
+    dockerContext: ./model-server
+    plan: free  # Note: May need paid plan for better performance
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: ASSETS_DIR
+        value: /data/assets
+      - key: HF_HOME
+        value: /cache/huggingface
+      - key: TRANSFORMERS_CACHE
+        value: /cache/huggingface/transformers
+      - key: HF_HUB_ENABLE_HF_TRANSFER
+        value: 0
+      - key: HF_HUB_TIMEOUT
+        value: 180
+      - key: HF_HUB_DISABLE_TELEMETRY
+        value: 1
+    disk:
+      name: model-cache
+      mountPath: /cache
+      sizeGB: 2
+
+  # Frontend Static Site
+  - type: web
+    name: 3dgenerator-frontend
+    runtime: docker
+    dockerfilePath: ./front/Dockerfile
+    dockerContext: ./front
+    plan: free
+    region: oregon
+    envVars:
+      - key: VITE_API_BASE
+        fromService:
+          type: web
+          name: 3dgenerator-backend
+          property: host

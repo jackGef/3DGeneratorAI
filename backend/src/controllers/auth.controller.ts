@@ -35,13 +35,6 @@ export async function startRegistration(req: Request, res: Response) {
         .status(409)
         .json({ error: "User already exists with this email" });
 
-    // avoid duplicates in pending verifications
-    const existing = await Verification.findOne({ email }).lean();
-    if (existing)
-      return res
-        .status(409)
-        .json({ error: "Verification already pending for this email" });
-
     const passwordHash = await bcrypt.hash(password, 12);
     const code = generateSecureCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
@@ -50,8 +43,6 @@ export async function startRegistration(req: Request, res: Response) {
 
     console.log(`[DEV] Verification code for ${email}: ${code}`);
 
-    // send the code. await and catch errors so an SMTP failure doesn't
-    // crash the whole process (we still return success to the client).
     try {
       await sendEmail(
         email,
@@ -61,7 +52,6 @@ export async function startRegistration(req: Request, res: Response) {
       );
       console.log(`Verification email queued/sent to ${email}`);
     } catch (mailErr) {
-      // Log the failure but don't treat email send failure as fatal for registration.
       console.warn(`Failed to send verification email to ${email}:`, mailErr);
     }
 
@@ -107,7 +97,7 @@ export async function resendVerification(req: Request, res: Response) {
 
     // Generate new code and update expiry
     const code = generateSecureCode();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     
     await Verification.updateOne(
       { email },
@@ -126,7 +116,6 @@ export async function resendVerification(req: Request, res: Response) {
       );
       console.log(`Verification email resent to ${email}`);
     } catch (mailErr) {
-      // Log the failure but don't treat email send failure as fatal
       console.warn(`Failed to resend verification email to ${email}:`, mailErr);
     }
 
@@ -168,12 +157,10 @@ export async function completeRegistration(req: Request, res: Response) {
     // Check if user already exists before creating
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      // Clean up verification record
       await Verification.deleteOne({ email });
       return res.status(409).json({ error: "User already exists with this email" });
     }
 
-    // Passed → create user
     const user = await User.create({
       email,
       emailVerified: true,
@@ -188,7 +175,6 @@ export async function completeRegistration(req: Request, res: Response) {
       },
     });
 
-    // cleanup
     await Verification.deleteOne({ email });
 
     return res.status(201).json({
@@ -265,7 +251,6 @@ export async function login(req: Request, res: Response) {
 
 export async function getMe(req: Request, res: Response) {
   try {
-    // req.user is attached by auth middleware
     const userId = (req as any).user?.userId;
     
     if (!userId) {
@@ -300,29 +285,26 @@ export async function requestPasswordReset(req: Request, res: Response) {
 
     // Check if user exists
     const user = await User.findOne({ email });
-    // Don't reveal if user exists or not (security best practice)
-    // Always return success even if email doesn't exist
     
     if (user) {
       // Generate secure random token
       const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-      // Delete any existing reset tokens for this email
       await PasswordReset.deleteMany({ email });
 
       // Create new reset token
       await PasswordReset.create({ email, token, expiresAt });
 
       // Send reset email
-      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
       
       try {
         await sendEmail(
           email,
           "Password Reset Request",
-          `You requested a password reset. Click this link to reset your password: ${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, please ignore this email.`,
-          `<p>You requested a password reset.</p><p><a href="${resetUrl}">Click here to reset your password</a></p><p>This link expires in 1 hour.</p><p>If you didn't request this, please ignore this email.</p>`
+          `You requested a password reset. Click this link to reset your password: ${resetUrl}\n\nThis link expires in 15 minutes.`,
+          `<p>You requested a password reset.</p><p><a href="${resetUrl}">Click here to reset your password</a></p><p>This link expires in 15 minutes.</p>`
         );
         console.log(`Password reset email sent to ${email}`);
       } catch (mailErr) {
@@ -330,7 +312,6 @@ export async function requestPasswordReset(req: Request, res: Response) {
       }
     }
 
-    // Always return success (don't reveal if user exists)
     return res.json({ 
       ok: true, 
       message: "If an account exists with that email, a password reset link has been sent." 
@@ -359,7 +340,7 @@ export async function resetPassword(req: Request, res: Response) {
     // Find valid reset token
     const resetRequest = await PasswordReset.findOne({ 
       token,
-      expiresAt: { $gt: new Date() } // Token must not be expired
+      expiresAt: { $gt: new Date() }
     });
 
     if (!resetRequest) {
@@ -372,7 +353,6 @@ export async function resetPassword(req: Request, res: Response) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Hash new password
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
     // Update user password
@@ -433,12 +413,10 @@ export async function refreshAccessToken(req: Request, res: Response) {
       roles: user.roles,
     });
 
-    // Implement token rotation for security
     // Generate new refresh token
     const newRefreshTokenString = generateRefreshToken();
     const expiresAt = getRefreshTokenExpiry();
 
-    // Mark old token as replaced
     refreshToken.revokedAt = new Date();
     refreshToken.replacedByToken = newRefreshTokenString;
     await refreshToken.save();
@@ -467,14 +445,11 @@ export async function logout(req: Request, res: Response) {
   try {
     const parsed = refreshTokenSchema.safeParse(req.body);
     if (!parsed.success) {
-      // If no refresh token provided, just return success
-      // (client can delete access token on their side)
       return res.json({ ok: true, message: "Logged out successfully" });
     }
 
     const { refreshToken: tokenString } = parsed.data;
 
-    // Find and revoke the refresh token
     const refreshToken = await RefreshToken.findOne({ token: tokenString });
     
     if (refreshToken && !(refreshToken as any).isActive()) {

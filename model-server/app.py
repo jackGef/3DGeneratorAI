@@ -84,11 +84,11 @@ def generate3D():
     ply_path = os.path.join(out_dir, "mesh.ply")
     export_to_ply(mesh_data, ply_path)
 
-    # Export to .obj (and write a tiny MTL placeholder if missing)
+    # Export to .obj
     obj_path = os.path.join(out_dir, "mesh.obj")
     export_to_obj(mesh_data, obj_path)
 
-    # Ensure .mtl exists (OBJ loader expects it)
+    # Ensure .mtl exists
     mtl_path = os.path.join(out_dir, "mesh.mtl")
     if not os.path.exists(mtl_path):
         with open(mtl_path, 'w', encoding='utf-8') as f:
@@ -98,14 +98,11 @@ def generate3D():
     glb_path = os.path.join(out_dir, "mesh.glb")
     try:
         mesh = trimesh.load(ply_path)
-        # Optional: rotate upright (Shap‑E may be bottom-up). Comment if not desired.
-        # import numpy as np
-        # rot = trimesh.transformations.rotation_matrix(-np.pi/2, [1,0,0])
-        # mesh.apply_transform(rot)
         mesh.export(glb_path, file_type="glb")
         print(f"[model-server] Successfully exported GLB for {obj_id}")
     except Exception as e:
         print(f'[ERROR] GLB export failed for {obj_id}:', e)
+
         # Clean up partial files
         import shutil
         shutil.rmtree(out_dir, ignore_errors=True)
@@ -115,6 +112,5 @@ def generate3D():
 
 if __name__ == '__main__':
     print("[model-server] Starting Flask server...")
-    print("[model-server] Text generation endpoint: POST /generateText")
     print("[model-server] 3D generation endpoint: POST /generate3D")
     app.run(host='0.0.0.0', port=5000)

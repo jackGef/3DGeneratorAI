@@ -45,11 +45,11 @@ const chatPage = () => {
   const [showProfileMenu, setShowProfileMenu] = useState<Boolean>(false)
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [isNavOpen, setIsNavOpen] = useState(true);
+  const [isNavOpen, setIsNavOpen] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [pinnedChats, setPinnedChats] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(false);
-  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showScrollButton, setShowScrollButton] = useState<boolean>(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -64,7 +64,7 @@ const chatPage = () => {
       setChats(userChats);
       
       // Set pinned chats
-      const pinned = new Set(userChats.filter((chat: Chat) => chat.isPinned).map((chat: Chat) => chat.id));
+      const pinned = new Set<string>(userChats.filter((chat: Chat) => chat.isPinned).map((chat: Chat) => chat.id));
       setPinnedChats(pinned);
     } catch (error) {
       console.error('Failed to load chats:', error);
@@ -151,15 +151,12 @@ const chatPage = () => {
       if (!chatId) throw new Error('Chat ID is null after creation');
       await chatsAPI.addMessage(chatId, 'user', messageContent);
       
-      // Immediately reload to show user message
       await loadChat(chatId);
       
-      // Poll for the 3D model response (can take longer)
       const pollInterval = setInterval(async () => {
         try {
-          await loadChat(chatId);
-          // Check if we have a new assistant message
           const chat = await chatsAPI.get(chatId);
+          setMessages(chat.messages || []);
           const lastMessage = chat.messages[chat.messages.length - 1];
           if (lastMessage && lastMessage.role === 'assistant') {
             clearInterval(pollInterval);
@@ -168,7 +165,7 @@ const chatPage = () => {
         } catch (error) {
           console.error('Error polling for updates:', error);
         }
-      }, 2000); // Poll every 2 seconds
+      }, 2000);
 
       // Stop polling after 5 minutes (model generation timeout)
       setTimeout(() => {
@@ -274,7 +271,7 @@ const chatPage = () => {
     if (days === 0) return 'Today';
     if (days === 1) return 'Yesterday';
     if (days < 7) return `${days} days ago`;
-    return date.toLocaleDateString();
+    return dateObj.toLocaleDateString();
   };
 
   const handleLogout = async () => {
@@ -335,7 +332,7 @@ const chatPage = () => {
                     <p className="chat-title">{chat.title}</p>
                     {pinnedChats.has(chat.id) && <FaThumbtack className="pin-icon" />}
                   </div>
-                  <p className="chat-preview">{chat.messages[chat.messages.length - 1]?.text?.substring(0, 40) || 'No messages yet'}...</p>
+                  <p className="chat-preview">{chat.messages[chat.messages.length - 1]?.content?.substring(0, 40) || 'No messages yet'}...</p>
                   <small className="chat-date">{getRelativeTime(chat.createdAt)}</small>
                 </div>
                 <div className="chat-actions">

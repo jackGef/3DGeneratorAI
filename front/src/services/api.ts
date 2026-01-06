@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8081';
+const API_BASE = import.meta.env.VITE_API_BASE || undefined;
 
 let accessToken: string | null = localStorage.getItem('accessToken');
 let refreshToken: string | null = localStorage.getItem('refreshToken');
@@ -30,6 +30,10 @@ async function apiRequest(endpoint: string, options: RequestInit = {}) {
 
   if (accessToken) {
     headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  if(!API_BASE) {
+    throw new Error('API_BASE is not defined');
   }
 
   let response = await fetch(`${API_BASE}${endpoint}`, {
