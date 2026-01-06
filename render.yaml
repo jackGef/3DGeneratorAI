@@ -3,6 +3,10 @@ services:
   # Note: Render doesn't offer free MongoDB, use MongoDB Atlas instead
   # Connection string will be set via environment variable
 
+  # Model Server deployed separately on Hugging Face Spaces
+  # See model-server/README.md for deployment instructions
+  # Free tier with 16GB RAM - better for AI workloads
+
   # Backend API Service
   - type: web
     name: 3dgenerator-backend
@@ -18,7 +22,7 @@ services:
       - key: MONGODB_URI
         sync: false  # Set this in Render dashboard (MongoDB Atlas connection string)
       - key: MODEL_SERVER_URL
-        value: https://3dgenerator-model-server.onrender.com
+        sync: false  # Set this to your HF Space URL: https://YOUR_USERNAME-3dgenerator-model-server.hf.space
       - key: ASSETS_DIR
         value: /data/assets
       - key: PUBLIC_BASE_URL
@@ -51,29 +55,6 @@ services:
           property: host
       - key: NODE_ENV
         value: production
-
-  # Model Server (AI/ML Service)
-  - type: web
-    name: 3dgenerator-model-server
-    runtime: docker
-    dockerfilePath: ./model-server/Dockerfile
-    dockerContext: ./model-server
-    plan: free  # Note: May need paid plan for better performance
-    region: oregon
-    healthCheckPath: /health
-    envVars:
-      - key: ASSETS_DIR
-        value: /data/assets
-      - key: HF_HOME
-        value: /cache/huggingface
-      - key: TRANSFORMERS_CACHE
-        value: /cache/huggingface/transformers
-      - key: HF_HUB_ENABLE_HF_TRANSFER
-        value: 0
-      - key: HF_HUB_TIMEOUT
-        value: 180
-      - key: HF_HUB_DISABLE_TELEMETRY
-        value: 1
 
   # Frontend Static Site
   - type: web

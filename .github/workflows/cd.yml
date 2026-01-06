@@ -76,10 +76,8 @@ jobs:
           if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" ]; then
             curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}"
           fi
-          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_MODEL_SERVER }}" ]; then
-            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_MODEL_SERVER }}"
-          fi
           echo "Deployment triggered successfully!"
+          echo "Note: Model server is deployed separately on Hugging Face Spaces"
 
       # Alternative: Deploy to server via SSH (if using VPS instead)
       # - name: Deploy to Server
